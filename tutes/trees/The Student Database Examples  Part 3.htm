@@ -1,0 +1,814 @@
+<html><head>
+<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+<title>The Student Database Examples: Part 3</title>
+</head>
+
+<body>
+
+<h1>The Student Database Examples: Part 3. </h1>
+<i>Note, the material in these notes will not be covered in the exam</i>
+
+<h3> Motivations </h3>
+
+<h4> Using trees to store sorted data </h4>
+
+We have seen that linked cells can effectively store an arbitrary
+number of students in the database (as far as memory allows). This is
+good --- much better than the array of a fixed length, however big it
+may be. By traversing the list which is alphabetically sorted, we can
+search the database and insert/delete a student record while keeping
+the resulting database again well-sorted.  In this lecture we
+introduce a further refinement in the way of storing the
+database. This time we use a data structure called <i>tree</i>,
+actually a so-called <i>binary tree</i>.  The use of tree instead of
+list allows us to find a required student record usually much faster
+than before on average, without doing the whole traversal from the
+beginning part of the student (if you have read materials well, you
+may know that a similar scheme already appeared in StudentDatabase4,
+where a method called binary search is used). For example, if there
+are 10'000 students, and if we wish to find somebody in the middle, we
+basically should go through 5000 records.  In the new method, we would
+only have to traverse less than 20 nodes if a tree is in "good shape",
+i.e. roughly symmetric on both right and left. On the other hand, this
+introduces a certain subtlety when you wish to delete or insert a new
+record, as we shall see later.
+
+<h4> Trees in Computing </h4>
+
+The reason for introducing trees has another motivation: trees are
+very important data structures widely used in computing systems. It is
+there in the directory structures of your favourite operating systems,
+it is there when your browser wishes to find URL when you are surfing
+the Net, and it would also be there, though less evidently, when one
+is dealing with resource contention, for example when several people
+wish to print in some print server at the same time (where trees are
+often used for control of waiting queues).  It is also there when you
+are using compilers, including those for Java, where trees are used to
+store syntactic structures of programs.  In the same way, trees are
+used for natural language processing and other many AI programs. So,
+in short, <i> if you do not know trees, you cannot go much far in
+programming. </i> Do understand the basics of trees for your future of 
+computing life, not only for examination!
+
+<h4>Plan </h4>
+
+We first briefly study the general idea of trees: what is their
+interface and how we can implement it using Java. Since a tree is
+quite similar in structure to linked lists, this part may not be
+difficult and is made brief. Then we proceed to a binary search tree,
+in which treatment of key fields with which we sort the trees is
+essential. Using the binary search trees, we implement a new version
+of student database.
+
+<h3> Trees Basics </h3>
+
+<h4> What are trees? </h4>
+
+When we say something has a tree-shape, perhaps what we mean is it has
+some kind of <i>root</i>, from which <i>branches</i> go upward each of
+which would further ramify into smaller branches so that, at the end, we
+reach its <i>leaves</i>. In figure (with labels of numbers on nodes):
+<p>
+<img src="The%20Student%20Database%20Examples%20%20Part%203_files/treefig1.gif">
+</p><p>
+Note we have drawn the root at the top and branches spread downward: this is
+how we usually visualise trees in computing, which is often more
+convenient when we draw a tree in some paper and let it grow its
+branches (assuming you draw a tree starting from the top!).
+
+Further, as in the above tree, a tree used in computing often contain
+data in each of its node, just like linked cells --- so that the root
+and all intermediate ones would contain some data (unless the tree is
+empty). So it is a variant of linked cells, though this time it is
+two-dimensional and should spread systematically from the root. Each cell looks like this:
+</p><p>
+<img src="The%20Student%20Database%20Examples%20%20Part%203_files/treefig0.gif">
+</p><p>
+Then the above tree is represented by cells and pointers as follows:
+</p><p>
+<img src="The%20Student%20Database%20Examples%20%20Part%203_files/treefig2.gif">
+</p><p>
+To
+talk about trees intelligibly, we use the following terminology.</p><p>
+
+</p><li> Each tree (if not empty, see below) has a unique node, called  
+<i>root</i>. <p>
+
+</p></li><li> Each node, except the root, has a unique <i>parent node</i>, to which
+     it is connected upwards. <p>
+
+</p></li><li> On the other hand, each node has zero or more <i>child node(s)</i>,
+     to which it is connected downwards. <p>
+
+</p></li><li> A node, its children, children of its child, etc. are called its
+     <i> descendants. </i> <p>
+
+</p></li><li> A node, its parent, its parent of its parent, etc. are called its
+     <i> ancestors. </i> <p>
+
+We have other important ideas, such as <i>path length</i> and
+<i>height</i>, but we do not use them here. It is also
+convenient to consider a tree which has no nodes at all, which we call
+the <i> empty tree </i>.
+
+In this lecture we only consider a simple kind of trees, called <i>
+binary trees </i>. In binary trees, each node has at most two
+children. Thus we can talk about <i> left child </i> and <i> right child </i>
+of a tree. 
+
+</p><h4> Operations on (Binary) Trees</h4>
+
+We now consider the basic form of interaction with a binary tree
+(which we simply call tree from now on).  In general, there are two
+basic frameworks to do so. One form considers a tree as <i> recursive
+data structures </i> (so a tree consists of its subtrees), just as we
+saw in linked lists. Here there is no distinction between trees and
+nodes: when we go from a root to one of its children, we are just
+visiting a child tree from its parent tree. This makes its interface
+clean and simple, and we consider this version in the following.
+Another approach, which we do not discuss here, is that we distinguish
+the whole tree and its nodes. This approach is useful when global
+information on the whole tree matters. An example is an insertion of a
+node with a specific data item to some location in a tree so that the
+whole tree is kept "balanced". Such examples are found in Weiss's
+book. It is however important to note that, even in such cases, we
+often use the recursive representation of trees first, and consider a
+tree-as-a-whole on the top of such representation, utilising the
+interface of recursively given trees: in many senses, trees are 
+quintessential example of recursive data structures.
+
+<p>
+
+Therefore we take the first approach, where we use a recursive structure to
+define a tree, just as we did so in the case of linked list. What then
+has become the interface of a tree?  First of all, we need some means
+to create a <i> new tree </i>, one non-empty one (specifying its
+children and its content) and an empty one. Now given a tree, we can
+ask whether it is <i> empty </i> or not. If it is not empty, then we
+can ask the <i> content </i> of its root node (note that, as we noted,
+we are regarding a tree and its root as one and the same thing).  To
+traverse a tree, we should be able to ask a tree what are its <i> left
+child </i> and its <i> right child, </i> which should again be trees.
+These trees can be empty; if both children are empty, then that 
+tree is actually a <i> leaf </i> (a node without any children), 
+so we may as well check if a tree is a leaf or not.
+We shall also find operations for altering the structure of a tree
+convenient later: for this purpose we also consider operations for <i>
+deleting </i> a left/right child of a given tree, and for <i>
+inserting </i> a new one.
+
+</p><p>
+
+Other possible operations are asking what is the parent of a certain
+tree, asking the number of nodes in a given tree, inserting/deleting
+the datum or even making a non-empty tree empty, but we do not
+consider them here (they can be easily incorporated to the interface
+and its implementation later). We can now introduce the interface of a
+tree.  
+</p><pre>     1	public interface Tree
+     2	{
+     3	    public Tree newtree(Tree l, Tree r, Object i); 
+     4	    public Tree emptytree();
+     5	    public boolean isempty();
+     6	    public boolean isleaf();
+     7	    public Object getcontent();
+     8	    public Tree getleft();
+     9	    public Tree getright();
+    10	    public void setleft(Tree t);
+    11	    public void setright(Tree t);
+    12	}
+</pre> 
+Let us discuss what are the expected behaviour of a tree in these
+operations.  First, <code> newtree </code> constructs a new tree, with
+specified parameters, while <code> emptytree </code> gives an empty
+tree.  Then <code> isempty() </code> can test the emptiness of a given
+tree.  When a given tree is not empty, the meaning of the remaining
+operations should be clear: we check whether a tree is a leaf or not,
+we retrieve its content/children, or we set values to the children.
+However when a given tree is indeed empty, the expected behaviour of
+these operations may not be clear. One simple way to settle this
+is to assume that a user of this data structure always first checks
+whether a tree is empty or not before applying these operations, 
+and that we do not expect these operations to
+change the empty tree into non-empty. Essentially, if a tree is indeed
+empty and these operations are performed, we do not have to care what
+would be the result.
+
+<h4> Implementing Trees as Linked Trees </h4>
+
+The following Java code implements the expected behaviour of binary
+trees which we roughly depicted above. Since we shall use binary trees
+for StudentDatabase later, we define a tree of student records, though
+we could have used any kind of object as content of a tree: just
+replace all Student with any other class. Also we use standard
+constructors (those methods whose name is the same as the class)
+for implementing newtree and emptytree.
+<pre>     1	public class StudentTree 
+     2	{
+     3	  private StudentTree leftchild; 
+     4	  private StudentTree rightchild; 
+     5	  private Student item;
+     6	  private boolean IsEmpty;
+     7	  
+     8	  // construct a new tree. 
+     9	  public StudentTree(StudentTree l, StudentTree r, Student i)
+    10	  {
+    11	    leftchild=l;
+    12	    rightchild=r;
+    13	    item=i;
+    14	    IsEmpty=false;
+    15	  }
+    16	
+    17	  // construct a new leaf.
+    18	  public StudentTree(Student i)
+    19	  {
+    20	    leftchild=new StudentTree();
+    21	    rightchild=new StudentTree();
+    22	    item=i;
+    23	    IsEmpty=false;
+    24	  }
+    25	
+    26	  // construct an empty tree. 
+    27	  public StudentTree()
+    28	  {
+    29	    leftchild=null;
+    30	    rightchild=null;
+    31	    item=null;
+    32	    IsEmpty=true;
+    33	  }
+    34	    	
+    35	  public boolean isempty()
+    36	  {
+    37	    return IsEmpty;
+    38	  }
+    39	    	  
+    40	  public boolean isleaf()
+    41	  {
+    42	    return (leftchild.isempty() &amp;&amp; rightchild.isempty()); 
+    43	  }
+    44	    	  
+    45	  public Student getcontent()
+    46	  {
+    47	    return item;
+    48	  }
+    49	    	    
+    50	  public StudentTree getleft()
+    51	  {
+    52	    return leftchild;
+    53	  }
+    54	    	    
+    55	  public StudentTree getright()
+    56	  {
+    57	    return rightchild;
+    58	  }
+    59	    	  
+    60	  public void setleft(StudentTree t)
+    61	  {
+    62	    leftchild=t;
+    63	  }
+    64	    	    
+    65	  public void setright(StudentTree t)
+    66	  {
+    67	    rightchild=t;
+    68	  }
+    69	    	
+    70	  public void printall()
+    71	  {
+    72	    if (!IsEmpty) 
+    73	      {
+    74		if (!leftchild.isempty())
+    75		  leftchild.printall();
+    76		System.out.println(item);
+    77		if (!rightchild.isempty())
+    78		  rightchild.printall();
+    79	      }
+    80	  }	  
+    81	  
+    82	}
+</pre>
+
+Most codes should be straightforward implementation of the already
+discussed ideas, except some points may better be illustrated.
+
+First, to distinguish between non-empty trees and the empty
+tree, we are using a boolean value <code> IsEmpty </code> to decide whether a tree is
+empty or not.  Instead, we could have used an inner class which also
+decides the emptiness of a tree, just as in LinkedList before. It is
+easy to see they give exactly the same behaviour to a user: we leave
+git as an exercise to convert the following code to a code which uses
+an inner class. 
+
+<p>
+
+Secondly, as we noted already, we implemented <code> newtree </code>
+and <code> emptytree </code> using constructors, rather than
+defining themselves. If we strictly wish to implement the original
+interface, we can do so by adding these methods, defined based 
+on the constructors. 
+
+</p><p>
+
+Third, you may notice we added two new methods to the original
+interface.  One is <code> newleaf </code>, which simply makes a new leaf with
+a given student record, i.e. a node with an item but with no children.
+
+</p><p>
+
+Another method, <code> printall </code>, is shown here to show the 
+power of recursive definition. It prints a student data
+in the following order. Given a tree, it first prints all data in its
+left child, using the same method; then it prints its own item;
+finally it prints all data in its right child. Observe that the method
+is defined recursively, which means, at each child nodes, exactly 
+the same thing is done. In a binary search tree which we discuss later,
+this means the data is printed precisely in the sorted order.
+Note the code is concise and intelligible using the power of recursion. 
+
+</p><h3> Implementing Student Database Using Binary Search Tree </h3>
+
+<h4> Basic Ideas </h4>
+
+Our purpose is to use the tree representation of student records for
+implementing a sorted student database. For this purpose we use a
+specific binary tree which is called a <i> binary search tree </i>. We
+illustrate the basic idea. Suppose, for simplicity, we have a tree as
+above which only contains natural numbers as its items. Now take a
+sorted list of numbers, say 1, 3, 7, 9, 11, 12, 15. The idea is to
+place some intermediate value, say 9, at the root; it has two
+children, 3 and 12. 3 then has two children again, 1 and 7. On the
+other hand 12 has two children, 12 and 15. It is better to draw a
+picture: 
+<p>
+<img src="The%20Student%20Database%20Examples%20%20Part%203_files/treefig3.gif">
+</p><p>
+
+In the
+above binary tree, you can observe the following fact:</p><p>
+
+ <b> 
+</b></p></li><li><b> Given each node c of a binary search tree, each descendant of its left
+      child always 
+      has a smaller value than c.
+
+</b></li><li><b> Similarly  each descendant of its left child always 
+      has a bigger value than c.
+</b>
+
+<p>
+One may find this idea as a rather elaborate way of arranging things:
+Indeed insertion and deletion of data are intricate --- we shall later
+discuss their subtleties. So the question is why we use such an
+arrangement, and there is a good answer. Suppose we want to find
+the minimum data. Then, from that root, simply choose the left child
+at each step, and when you reach the end it is the least, that is
+1. Similarly for the maximum datum.
+
+</p><p>
+
+As another merit of this arrangement, let us try to find say 11.  Then
+you first compare 11 with 9, and find it is bigger than 9, so go to
+right (see below). 
+</p><p>
+<img src="The%20Student%20Database%20Examples%20%20Part%203_files/treefig4.gif">
+</p><p>
+Then you saw 12: 
+
+</p><p>
+<img src="The%20Student%20Database%20Examples%20%20Part%203_files/treefig5.gif">
+</p><p>
+
+which means you should go left, and you meet 11, successfully.
+
+Note if you start from 1 in the sorted linked list, you should go
+through five iterations, while here we only need three. If the tree is
+completely symmetric like the above one, for any datum (including the
+case it does not exist) to know its existence or non-existence you
+only need (with N data) the logarithm of N with base 2. This is of
+course much better than list!  This principle of search can be
+summarised as follows: Suppose we are given a key value v. In order to
+find the corresponding node in a binary search tree, </p><p>
+
+<b> 
+</b></p></li><li><b> Start from the root and 
+compare its key value, say v', with v. 
+</b></li><li><b> If they are equal, we end our search there; if not, if v' is smaller (bigger), go to the 
+right (left). 
+</b></li><li><b>
+Repeat this until we reach
+a leaf (so the search failed), or we find the matching node. </b> <p>
+
+Note the idea can be used both in the case when there is indeed a
+matching key, as well as when there is no nodes with the matching
+key. In both cases, and especially when a given tree is balanced, the
+search can be done very fast.  Moreover, even in the worst case, the
+number of search we need is the same as a linked list --- so there are
+ample reasons to put up with some complexity of coding to implement
+the database as a tree!
+
+</p><h4> Treatment of Duplicated Data. </h4>
+
+In our student database, there can be more than one students who has
+the same last name. In such cases, the preceding principle --- for
+each subtree, the data on the right child should always have bigger
+keys than the root itself, and those on the left hand have lesser keys --- 
+should be relaxed. Here we simply change the principle for the right child as:
+<p> 
+
+<b> </b></p></li><li><b> Given each node c, all descendants of
+its right child have no less values than c. 
+</b>
+<p>
+
+We can further add such a condition as: if two nodes have the same
+value, they should be connected. This can be easily done and useful
+if one wishes to find a sequence of students with the same name,
+but here for simplicity we just stipulate the above single principle.
+
+</p><p>
+
+For the treatment of duplicated names, there are further possible
+arrangements. One idea is to combine all such nodes as a linked list,
+and let each node contains a pointer to such a list. Another is to let
+the next duplicated node come always at leaves. Our choice gives one
+simple approach which does not sacrifice much efficiency.
+
+</p><h4> An Implementation of Studentdatabase (1) Operations on Binary Search Trees </h4>
+
+We can now give the implementation of Student Database, which we call
+StudentDatabase7. For the ease of illustration, we first place the
+codes for the routines which are used to search, insert and remove
+data from our binary search trees. In the latter part, the public
+methods are defined. We first discuss the former part.
+<pre>     1	class StudentDatabase7 implements Database
+     2	{
+     3	  // Implemented with a binary search tree, ordered by name
+     4	
+     5	  // When there is a duplication, the second one becomes
+     6	  // a right child of the first one (the only first one 
+     7	  // has the left child), and so on.
+     8	
+     9	  // Two basic search routines for binary search trees.
+    10	  // (1) find a student from a tree which matches the key.
+    11	  //     returns the emptytree when no match is found.
+    12	  private StudentTree find(String key, StudentTree s) 
+    13	    {
+    14	      if (s.isempty())
+    15		return s;
+    16	      else if (s.getcontent().name.compareTo(key)==0)
+    17		  return s;
+    18	      else if (s.getcontent().name.compareTo(key)&gt;0)
+    19		return find(key, s.getleft());
+    20	      else 
+    21		  return find(key, s.getright());
+    22	    }
+    23	
+    24	  // (2) findMin returns the subtree whose head is a student 
+    25	  //     with the minimum name.
+    26	  private StudentTree findMin(StudentTree t)
+    27	    {
+    28	      if (!t.isempty())
+    29		{
+    30		  StudentTree ptr=find(t.getcontent().name, t);
+    31		  if (!t.getleft().isempty())
+    32		    return findMin(t.getleft());
+    33		  else
+    34		    return t;
+    35		}
+    36	      return t;
+    37	    }
+    38	
+    39	  // Three basic routines for inserting and removing data
+    40	  // from binary search trees.
+    41	  // (A) "insertRec" inserts a new student to a studenttree.
+    42	  //  -- if the name of the student is smaller than that of the root,
+    43	  //     insert it to the left.
+    44	  //  -- if the name of the student is the same or bigger than that
+    45	  //     of the root, then insert it to the right branch. 
+    46	  private StudentTree insertRec(Student s, StudentTree t) throws 
+    47	  OutOfMemoryError
+    48	    {
+    49	      if (t.isempty())
+    50		return new StudentTree(s);
+    51	      else 
+    52		{
+    53		  if (s.name.compareTo(t.getcontent().name)&lt;0)
+    54		    t.setleft(insertRec(s, t.getleft()));
+    55		  else if (s.name.compareTo(t.getcontent().name)&gt;=0)
+    56		    t.setright(insertRec(s, t.getright()));
+    57		  return t;
+    58		}
+    59	    }
+    60	
+    61	  // (B) "removeRec" removes a student with matching name from a 
+    62	  //     tree.
+    63	  //  -- if it finds the match at the leaf, just delete.
+    64	  //  -- if it finds the match in a node with only one child, then
+    65	  //     just contract the node. 
+    66	  //  -- if it finds the match in a node with two children, then:
+    67	  //     (1) find a least student from the right branch; (2) construct
+    68	  //     a new tree with: its left branch is as original, its right
+    69	  //     branch is as the original, except it is minus the student
+    70	  //     we found in (1), and its content is that student.
+    71	  private StudentTree removeRec(String key, StudentTree tree)
+    72	    {
+    73	      if (tree.isempty())
+    74		return tree;
+    75	      else
+    76		if (tree.getcontent().name.compareTo(key)&gt;0)
+    77		  {
+    78		    tree.setleft(removeRec(key, tree.getleft()));
+    79		    return tree;
+    80		  }
+    81		else if (tree.getcontent().name.compareTo(key)&lt;0)
+    82		  {
+    83		    tree.setright(removeRec(key, tree.getright()));	  
+    84		    return tree;
+    85		  }
+    86		else // match found.
+    87		  {
+    88		    StudentTree newtree;
+    89		    if (!tree.getleft().isempty() &amp;&amp; !tree.getright().isempty()) 
+    90		      {
+    91			// when the part to be deleted has both children.
+    92			// (1) get the student with the minimum name from the right branch.
+    93			// (2) make the new tree with the left branch as original, and
+    94			//     the right branch as original minus the student in (1), 
+    95			//     and the student in (1) as its content.
+    96			Student newroot=findMin(tree.getright()).getcontent();
+    97			newtree=new StudentTree(tree.getleft(),
+    98						removeMin(tree.getright()),
+    99						newroot);
+   100		      }
+   101		    else // when the part to be deleted has at most one child.
+   102		      newtree=(!tree.getleft().isempty()) ? 
+   103			tree.getleft() : 
+   104		      tree.getright();
+   105		    return newtree;
+   106		  }
+   107	    }
+   108	
+   109	  // (C) removeMin removes the students with the minimum name, and 
+   110	  //     returns the resulting tree.
+   111	  private StudentTree removeMin(StudentTree t)
+   112	    {
+   113	      if (!t.isempty())
+   114		{
+   115		  if (!t.getleft().isempty())
+   116		    t.setleft(removeMin(t.getleft()));
+   117		  else // the current value is minimum.
+   118		      t=t.getright();
+   119		}
+   120	      return t;
+   121	    }
+ </pre> 
+The first three methods are for searching some datum
+in our trees.
+
+First, <code> find </code> finds a matching datum just by searching
+the tree recursively. It goes like this: either the datum this method
+receives is smaller than what the root gives, then the datum should be
+found in its right branch. Or if the datum is bigger, then it would be
+found in the left branch. Finally you may reach the node which holds
+the required datum, in which case you return that node.  Or perhaps
+you reach the dead-end (the tree is empty), which tells you that there
+has been no datum, and you simply return that node which denotes the
+empty tree. Note how the recursion is utilised to make the code
+simple. The same behaviour needs a much longer code if you use a
+loop. Since trees are more complex than lists in their structure, such
+simplicity becomes often very important for intelligible programs,
+and, in modern days where good compilers are available, overhead the
+recursion would give you by nested method calls can be ignored.
+
+<p>
+
+Second, <code> findMin </code> shows the power of recursion: this
+method tries to find a student with the minimum name, and for that
+purpose it recursively tries to search the right branch of a given
+tree. Since in any binary search tree the minimum datum always exists
+in the right branch, this is enough.  Note that, again, if no matching
+student is sound, this method returns an empty tree. We can similarly
+program <code> findMax </code> using recursion, which is again left as
+an exercise.
+
+</p><p>
+
+The second group, again comprising of three methods, gives us ways of 
+deleting and inserting students to the database.
+
+</p><p>
+
+First, <code> insertRec </code> ( stands for recursion) is a recursive
+method which inserts a student to an appropriate place in the tree,
+leaving the whole tree still well-sorted. The basic idea is as
+follows: if it receives a student and a tree node and the name of the
+student is smaller than that of the node, then it simply passes the
+request to the right branch of the node, and, receiving the result,
+set it as its new right branch.  If, on the other hand, it receives a
+student and a tree node and the name of the student is bigger than or
+the same as that of the node, then it passes the request to the left
+branch, and set the resulting tree as its new left branch. Finally,
+in the end, some empty tree receives the request, in which case 
+it simply returns a new leaf with the new student as its content.
+
+</p><p>
+
+Second,  <code> removeRec </code> (Rec stands for recursion) is a recursive
+method which, this time, deletes all students with the matching name.
+This is the longest and most complex routine among all we listed for 
+binary search trees. Its overall behaviour is to receive a name and a tree,
+then returns the result of deleting students with the matching name 
+from that tree. If the original tree is empty, we simply returns it.
+The next lines should look now familiar to you:
+</p><pre>    76		if (tree.getcontent().name.compareTo(key)&gt;0)
+    77		  {
+    78		    tree.setleft(removeRec(key, tree.getleft()));
+    79		    return tree;
+    80		  }
+    81		else if (tree.getcontent().name.compareTo(key)&lt;0)
+    82		  {
+    83		    tree.setright(removeRec(key, tree.getright()));	  
+    84		    return tree;
+    85		  }
+ </pre>
+in which, according to the order of the key, the code either visits
+the left branch or it visits the right branch, where the necessary 
+operations would be performed, and simply set the result to the original
+tree and return it.
+
+<p>
+
+The complex case is when the real removal of students takes place.
+That part says:
+</p><pre>    86		else // match found.
+    87		  {
+    88		    StudentTree newtree;
+    89		    if (!tree.getleft().isempty() &amp;&amp; !tree.getright().isempty()) 
+    90		      {
+    91			// when the part to be deleted has both children.
+    92			// (1) get the student with the minimum name from the right branch.
+    93			// (2) make the new tree with the left branch as original, and
+    94			//     the right branch as original minus the student in (1), 
+    95			//     and the student in (1) as its content.
+    96			Student newroot=findMin(tree.getright()).getcontent();
+    97			newtree=new StudentTree(tree.getleft(),
+    98						removeMin(tree.getright()),
+    99						newroot);
+   100		      }
+   101		    else // when the part to be deleted has at most one child.
+   102		      newtree=(!tree.getleft().isempty()) ? 
+   103			tree.getleft() : 
+   104		      tree.getright();
+   105		    return newtree;
+   106		  }
+</pre>
+
+Here, we first check if the student at the root (the content of <code>
+tree </code>) has two children or not. If it does, then the thing
+becomes most complex, since we should first choose an appropriate new
+root node of the tree (which, according to our principle, should be
+bigger than all the nodes in the original left branch and smaller than
+--- or equal to --- those in the original right branch). A natural
+candidate is the <i> minimum </i> node in the original right branch
+(or we may take the <i> maximum </i> node in the original left branch
+--- though we do not take this option), since this clearly satisfies
+the condition. So in Line 96 we find such a student; then, using it,
+in Line 97 we construct a new student tree <code> newtree </code>,
+which has: (1) the orginal left branch as its left branch, (2) the
+original right branch minus the student which we are now going to use
+for the root, as its right branch, and (3) that student as its
+content.  This constructs the required tree.  To understand the above
+part well, it is recommended that one oneself draws a few pictures to
+see how this mechanism works in practice.
+
+<p>
+
+In Line 102/104, we treat the case when the matching part does not have
+two children. If the new tree has the left child, then (since 
+the part does not have the right child) that left child becomes
+the new root; if the left child is missing, then we 
+send the right child of the last student with the matching name.
+
+</p><p>
+
+In all these cases where the matching name is found, a new tree
+is constructed and returned to the caller of the method.
+
+</p><p>
+
+Finally we have the <code> removeMin </code> method. Here either the given
+tree is empty, in which case we simply return it, or its left is not empty,
+which means there is smaller values so it calls itself to cut off
+the minimum node from its left branch. If there is no left branch, this 
+means the root itself holds the minimum datum: we then go to the last
+student with that minimum name, finds its right branch, and returns this 
+as the new tree.
+
+</p><h4> An Implementation of Studentdatabase (2) Database Operations </h4>
+
+Using the above codes, it is now a relatively easy matter to 
+implement the public methods needed for our students database,
+which is given as follows.
+<pre>   122	
+   123	  // From here public methods are defined. 
+   124	
+   125	  // the content of the database.
+   126	  private StudentTree students;
+   127	
+   128	  // Constructor.
+   129	  public StudentDatabase7()
+   130	    {
+   131	      students=new StudentTree();
+   132	    }
+   133	
+   134	  // The method "insert" uses insertRec.
+   135	  public void insert(Object obj) throws FullUpException
+   136	    {
+   137	      try {
+   138		students=insertRec((Student)obj, students);
+   139	      }
+   140	      catch(OutOfMemoryError e)
+   141		{
+   142		  throw new FullUpException();
+   143		}
+   144	    }
+   145	      
+   146	  // The method "delete" deletes students of the matching 
+   147	  // name useing the recursive method removeRec.
+   148	  public void delete(String key) throws NotFoundException
+   149	    {
+   150	      if (find(key, students).isempty()) // no student is found.
+   151		throw new NotFoundException(key);
+   152	      else
+   153	        while (!find(key, students).isempty())
+   154		    students=removeRec(key, students);
+   155	    }
+   156	
+   157	  // The method "retrieve" simply uses find.
+   158	  public Object retrieve(String key) throws NotFoundException
+   159	    {
+   160	      StudentTree ptr=find(key, students);
+   161	      if (ptr.isempty())
+   162		throw new NotFoundException(key);
+   163	      return ptr.getcontent();
+   164	    }      
+   165	
+   166	  // The method "list" prints alphabetically using printall. 
+   167	  public void list()
+   168	    {
+   169	      students.printall();
+   170	    }
+   171	
+   172	}
+</pre>
+The routines are simple bcause their main functionalities are
+already performed in private methods, on which we already
+discussed. The meaning of each routine should now be clear by following the codes line by line. 
+
+<p>
+
+One remark is the fact that, in the last method <code> list </code>,
+the listing is done in an alphabetical order, since (if you remember
+how <code> printall </code> behaviors) it first prints the data of the
+right branch using itself, then the datum the root holds, then data
+the left branch using itself; since recursively this is done and since
+it is always the case that the left branch own smaller data than the
+node itself, which in turn is no bigger than what the right branch
+holds, the printing should always be done in a sorted order.
+
+</p><h4> Further Topics  </h4>
+
+We already noted that, if we wish to do a search of a binary search
+tree efficiently, it is important that the tree is balanced, i.e. its
+shape is as left-right symmetric as possible. Unfortunately, our
+<code> insertRec </code> may or may not guarantee such symmetry.
+Interestingly, the worst scenario is when the original data is already
+sorted (try to check what would happen, using simple examples!).  If
+the original data is randomly arranged, then the result tends to work
+well, though the results can vary.  There are a few methods to
+ameliorate the situation. One simplest way is, assuming that update is
+not so frequently performed, to periodically balance the shape of the
+tree (for example, construct a new tree taking, at each moment, the
+middle of the remaining sorted data piece-wise, which always results
+in a good shape).  Or we can change the <code> insertRec </code> method
+to a more elaborate one which takes into account the global
+information of the whole tree.  Such refinement is discussed in
+Weiss's book.
+
+<hr>
+<address><a href="mailto:kohei@dcs.qmul.ac.uk">Kohei
+Honda</a></address> 
+<p>
+These notes were produced as part of the course
+<a href="http://www.dcs.qmul.ac.uk/%7Emmh/ItP/index.html">
+Introduction to Programming</a> as it was given in the
+<a href="http://www.dcs.qmul.ac.uk/">
+Department of Computer Science</a> at
+<a href="http://www.qmul.ac.uk/">
+Queen Mary, University of London</a>
+during the academic years 1998-2001.
+</p><p>
+<!-- hhmts start --> Last modified: 4 March 1999
+<!-- hhmts end -->
+
+
+</p></li></body></html>
